@@ -1,6 +1,7 @@
 import numpy as np
 import cv2
 from Webcam import Webcam
+from Commander import Commander
 
 
 def gamma_correction(frame, power):
@@ -32,6 +33,7 @@ def process_frame(frame):
 
 
 camera = Webcam()
+commander = Commander()
 lower_bound = np.array([0, 128, 0])
 upper_bound = np.array([255, 255, 128])
 width_range = (int(0.4 * camera.width), int(0.6 * camera.width))
