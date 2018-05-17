@@ -8,11 +8,11 @@ class Commander(object):
         self.segment_w = segment_w
         self.last_states = []
         self.last_commands = []
-        self.cm_per_pixel = 12 / segment_h
-        self.sec_per_rad = 0.1
-        self.sec_per_cm = 0.1
+        self.cm_per_pixel = 20 / segment_h
+        self.sec_per_rad = 1.0 / 5.93
+        self.sec_per_cm = 1.0 / 63
         self.arduino = serial.Serial('/dev/ttyACM0', 9600, timeout=.1)
-        time.sleep(2)
+        time.sleep(1)
         
     def receive_state(self, state):
         self.last_states.append(state)
@@ -20,10 +20,10 @@ class Commander(object):
         if len(self.last_commands) > 2 * self.votes:
             self.last_states.pop(0)
             self.last_commands.pop(0)
-        top_command = max(self.last_commands, key=last_commands.count)
+        top_command = max(self.last_commands, key=self.last_commands.count)
         n_top_command = self.last_commands.count(top_command)
         if n_top_command >= self.votes:
-            indices_top_command = [i for i, _ in enumerate(self.last_commands) if x == top_command]
+            indices_top_command = [i for i, x in enumerate(self.last_commands) if x == top_command]
             top_states = [st for index, st in enumerate(self.last_states) if index in indices_top_command]
             rho = 0
             theta = 0
@@ -50,50 +50,62 @@ class Commander(object):
             if (3.14 - tolerance) <= state[2] <= 3.14 or 0 <= state[2] <= tolerance: return 11
             
     def _execute_command(self, command, state):
+        print("command:", command)
+        start_time = time.time()
         if command == 0:
             self._turn_right(0.8 + state[2] - 1.57)
             self._forward((self.segment_h - state[1] + self.segment_h / 2) * self.cm_per_pixel * 1.41)
             self._turn_left(0.8)
         elif command == 1:
-            self._forward((self.segment_w * 0.7) * self.cm_per_pixel)
+            self._forward((self.segment_w * 0.7) * self.cm_per_pixel * 0.4)
         elif command == 2:
             self._turn_right(0.8)
         elif command == 3:
-            self._backward((rho + self.segment_w) * self.cm_per_pixel)
+            self._backward((state[1] + self.segment_w) * self.cm_per_pixel)
             self._turn_left(1.57)
         elif command == 4:
-            self._forward((self.segment_w * 2) * self.cm_per_pixel)
+            self._forward((self.segment_w * 2) * self.cm_per_pixel* 0.4)
         elif command == 5:
             self._turn_left(2 * 0.79 - state[2])
         elif command == 6:
             self._turn_right(0.79 + state[2] - 2.36)
         elif command == 7:
-            self._backward((rho + self.segment_w) * self.cm_per_pixel)
+            self._backward((state[1] + self.segment_w) * self.cm_per_pixel)
             self._turn_left(1.57)
         elif command == 8:
             self._turn_left(0.8 - state[2] + 1.57)
-            self._forward((self.segment_h - state[1] + self.segment_h / 2) * self.cm_per_pixel * 1.41)
+            self._forward((self.segment_h - state[1] + self.segment_h / 2) * self.cm_per_pixel)
             self._turn_right(0.8)
         elif command == 9:
             self._turn_left(2 * 0.79 - state[2])
         elif command == 10:
-            self._forward((self.segment_w * 0.7))
+            self._forward((self.segment_w * 0.3))
         elif command == 11:
-            self._backward((rho + self.segment_w) * self.cm_per_pixel)
+            self._backward((state[1] + self.segment_w) * self.cm_per_pixel)
             self._turn_left(1.57)
+        print('Executed time:', time.time() - start_time)
+        print()
     
     def _forward(self, dist):
-        self.arduino.write(("f_" + '0:0>4'.format(int(dist * self.sec_per_cm * 1000))).encode("utf8"))
+        self.arduino.write(("f_" + '{0:0>4}'.format(int(dist * self.sec_per_cm * 1000))).encode("utf8"))
+	#print(int(dist * self.sec_per_cm * 1000))
+        time.sleep(dist * self.sec_per_cm)
     
     def _turn_left(self, theta):
-        self.arduino.write(("l_" + '0:0>4'.format(int(theta * self.sec_per_rad * 1000))).encode("utf8"))
+        self.arduino.write(("l_" + '{0:0>4}'.format(int(theta * self.sec_per_rad * 1000))).encode("utf8"))
+        print(int(theta * self.sec_per_rad * 1000))
+        time.sleep(int(theta * self.sec_per_rad))
     
     def _turn_right(self, theta):
-        self.arduino.write(("r_" + '0:0>4'.format(int(theta * self.sec_per_rad * 1000))).encode("utf8"))
+        self.arduino.write(("r_" + '{0:0>4}'.format(int(theta * self.sec_per_rad * 1000))).encode("utf8"))
+        print(int(theta * self.sec_per_rad * 1000))
+        time.sleep(int(theta * self.sec_per_rad))
     
     def _backward(self, dist):
-        elf.arduino.write(("b_" + '0:0>4'.format(int(dist * self.sec_per_cm * 1000))).encode("utf8"))
+        self.arduino.write(("b_" + '{0:0>4}'.format(int(dist * self.sec_per_cm * 1000))).encode("utf8"))
+        print(int(dist * self.sec_per_cm * 1000))
+        time.sleep(int(dist * self.sec_per_cm))
         
 if __name__ == "__main__":
     commander = Commander(5,6)
-    commander._turn_right(1)
+    commander._forward(1)

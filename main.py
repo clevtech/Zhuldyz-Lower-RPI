@@ -33,14 +33,13 @@ def process_frame(frame):
 
 
 camera = Webcam()
-commander = Commander()
 lower_bound = np.array([0, 128, 0])
 upper_bound = np.array([255, 255, 128])
 width_range = (int(0.4 * camera.width), int(0.6 * camera.width))
 height1_range = (int(0 * camera.height), int(0.33 * camera.height))
 height2_range = (int(0.33 * camera.height), int(0.67 * camera.height))
 height3_range = (int(0.67 * camera.height), int(1 * camera.height))
-cm_per_pixel = 12 / height1_range[1]
+commander = Commander(height1_range[1], width_range[1] - width_range[0])
 
 
 while True:
@@ -52,12 +51,13 @@ while True:
     cv2.rectangle(frame, (width_range[0], height2_range[0]), (width_range[1], height2_range[1]), (0, 255, 0), 1)
     cv2.rectangle(frame, (width_range[0], height3_range[0]), (width_range[1], height3_range[1]), (0, 255, 0), 1)
     line_info = [process_frame(upper_frame), process_frame(middle_frame), process_frame(lower_frame)]
-    line_info = [(index, info) for index, info in enumerate(line_info) if info is not None]
+    line_info = [(index, info[0], info[1]) for index, info in enumerate(line_info) if info is not None]
     line_info = None if line_info == [] else line_info[0]
-    print(line_info)
     cv2.imshow('mainframe', frame)
     cv2.imshow('upperframe', upper_frame)
     cv2.imshow('middleframe', middle_frame)
     cv2.imshow('lowerframe', lower_frame)
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
+    if line_info is not None:
+        commander.receive_state(line_info)
