@@ -11,7 +11,7 @@ def gamma_correction(frame, power):
 
 
 def process_frame(frame):
-    lower_bound = np.array([30, 70, 200])
+    lower_bound = np.array([30, 70, 130])
     upper_bound = np.array([180, 230, 255])
     gamma_frame = gamma_correction(frame, 8)
     gray_frame = cv2.cvtColor(gamma_frame,cv2.COLOR_BGR2GRAY)
@@ -20,7 +20,7 @@ def process_frame(frame):
     color_mask = cv2.inRange(light_frame, lower_bound, upper_bound)
     line_frame = cv2.bitwise_and(light_frame, light_frame, mask=color_mask)
     edges_frame = cv2.Canny(line_frame,50,150,apertureSize = 3)
-    lines = cv2.HoughLines(edges_frame,1,np.pi/180,100)
+    lines = cv2.HoughLines(edges_frame,1,np.pi/180,35)
     if lines is not None:
         for rho,theta in lines[0]:
             a = np.cos(theta)
@@ -36,17 +36,23 @@ def process_frame(frame):
     return (1000, 1000), line_frame
 
 camera = Webcam()
-control = MotorController()
+control = MotorController(camera.height)
 control.position = 'A'
-control.task = 'A-B'
+tasks = ['A-B', 'B-C', 'C-D', 'D-E']
+index = 0
+control.task = tasks[index]
+#control.task = 'C-D'
+
 
 while True:
+    if control.task is None:
+        index += 1
+        control.task = tasks[index]
     frame = camera.get_current_frame()
     line_info, processed_frame = process_frame(frame)
     cv2.imshow('procframe', processed_frame)
     cv2.imshow('mainframe', frame)
     control.receive_state(line_info[0], line_info[1])
-    print(control.position)
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
