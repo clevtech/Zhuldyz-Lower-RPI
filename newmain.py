@@ -2,6 +2,7 @@ import numpy as np
 import cv2
 from Webcam import Webcam
 from MotorController import MotorController
+from UpperHost import UpperHost
 
 
 def gamma_correction(frame, power):
@@ -11,18 +12,22 @@ def gamma_correction(frame, power):
 
 
 def process_frame(frame):
-    lower_bound = np.array([30, 70, 200])
-    upper_bound = np.array([180, 230, 255])
-    gamma_frame = gamma_correction(frame, 3)
-    gray_frame = cv2.cvtColor(gamma_frame,cv2.COLOR_BGR2GRAY)
-    unfloor_mask = cv2.inRange(gray_frame, 50, 200)
-    light_frame = cv2.bitwise_and(frame, frame, mask=unfloor_mask)
-    color_mask = cv2.inRange(light_frame, lower_bound, upper_bound)
+    lower_bound_color = np.array([0, 0, 100])
+    upper_bound_color = np.array([255, 255, 255])
+    lower_bound_floor = np.array([0,0,0])
+    upper_bound_floor = np.array([255,255,130])
+    gamma_frame = gamma_correction(frame, 5)
+    unfloor_mask = cv2.inRange(gamma_frame, lower_bound_floor, upper_bound_floor)
+    unfloor_mask = cv2.bitwise_not(unfloor_mask)
+    light_frame = cv2.bitwise_and(gamma_frame, gamma_frame, mask=unfloor_mask)
+    color_mask = cv2.inRange(light_frame, lower_bound_color, upper_bound_color)
     line_frame = cv2.bitwise_and(light_frame, light_frame, mask=color_mask)
-    edges_frame = cv2.Canny(line_frame,50,150,apertureSize = 3)
-    lines = cv2.HoughLines(edges_frame,1,np.pi/180,130)
+    edges_frame = cv2.Canny(line_frame, 50, 150, apertureSize=3)
+    lines = cv2.HoughLines(edges_frame,1,np.pi/180,95)
     if lines is not None:
         for rho,theta in lines[0]:
+            if not 0.9 < theta < 2.24:
+                (1000, 1000), line_frame
             a = np.cos(theta)
             b = np.sin(theta)
             x0 = a * rho
@@ -37,17 +42,18 @@ def process_frame(frame):
 
 camera = Webcam()
 control = MotorController(camera.height)
-control.position = 'A'
-##tasks = ['A-B', 'B-C', 'C-D', 'D-E']
-##index = 0
-##control.set_task(tasks[index])
-control.set_task('D-B')
+tasks = ['ab', 'bc', 'cd', 'a']
+index = 0
+control.set_task(tasks[index])
 
+host = UpperHost()
 
 while True:
-##    if control.task is None:
-##        index += 1
-##        control.set_task(tasks[index])
+    _ = host.send(control.position)
+    host.read()
+    if control.task is None:
+        index += 1
+        control.set_task(tasks[index])
     frame = camera.get_current_frame()
     line_info, processed_frame = process_frame(frame)
     cv2.imshow('procframe', processed_frame)
