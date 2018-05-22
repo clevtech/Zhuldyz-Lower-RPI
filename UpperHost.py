@@ -1,7 +1,7 @@
 import socket
 
 class UpperHost:
-    def __init__(self, host='192.168.1.103', port=5555):
+    def __init__(self, host='192.168.1.102', port=5555):
         self.sock = socket.socket()
         self.sock.connect((host, port))
         

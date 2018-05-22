@@ -31,41 +31,53 @@ class MotorController:
             return
         if self.task == 'Stop':
             self._stop()
+            self._is_near(False)
         elif self.task == 'ab':
-            if self._is_near(True):
+            if self._is_near(True, thresh=70):
                 self.position = 'obst'
                 self._stop()
                 time.sleep(3)
-                if self._is_near(True):
+                if self._is_near(True, thresh=70):
                     self.position = 'B'
                     self.task = None
                     self._stop()
                 return
             if rho > 900:
                 self._forward()
-##                self.position = 'B'
-##                self.task = None
-##                self._stop()
             else:
                 self._forward_line(theta, rho)
         elif self.task == 'bc':
+            self.bc2_timer = time.time()
+            self.set_task('bc15')
+        elif self.task == 'bc15':
+            if time.time() - self.bc2_timer > 4:
+                self._stop()
+                self.set_task('bc18')
+                return
+            if self._is_near(False):
+                stop_time = time.time()
+                self.position = 'obst'
+                self._stop()
+                time.sleep(3)
+                self.bc2_timer += time.time() - stop_time + 0.325
+                return
             self._backward()
-            time.sleep(1.5)
-            self._stop()
-            self._turn_right(100)
-            self._stop()
+        elif self.task == 'bc18':
+            self._turn_left(210)
             self.set_task('bc2')
             self.bc2_timer = time.time()
         elif self.task == 'bc2':
-            if time.time() - self.bc2_timer > 7:
+            if time.time() - self.bc2_timer > 15:
                 self.position = 'C'
-                self._stop()
                 self.task = None
+                self._stop()
+                return
             if self._is_near(True):
                 stop_time = time.time()
                 self.position = 'obst'
                 self._stop()
-                self.bc2_timer += time.time() - stop_time
+                time.sleep(3)
+                self.bc2_timer += time.time() - stop_time + 0.325
                 return
             if rho < 900:
                 self._forward_line(theta, rho)
@@ -75,10 +87,10 @@ class MotorController:
             self.bc2_timer = time.time()
             self.task = 'a2'
         elif self.task == 'a2':
-            if time.time() - self.bc2_timer > 7:
+            if time.time() - self.bc2_timer > 14:
                 self.position = 'B'
                 self._stop()
-                self._turn_right(100)
+                self._turn_right(120)
                 self.task = 'a3'
                 self.bc2_timer = time.time()
                 return
@@ -86,14 +98,15 @@ class MotorController:
                 stop_time = time.time()
                 self.position = 'obst'
                 self._stop()
-                self.bc2_timer += time.time() - stop_time
+                time.sleep(3)
+                self.bc2_timer += time.time() - stop_time + 0.325
                 return
             if rho < 900:
                 self._backward_line(theta, rho)
             else:
                 self._backward()
         elif self.task == 'a3':
-            if time.time() - self.bc2_timer > 3:
+            if time.time() - self.bc2_timer > 2.15:
                 self.position = 'A'
                 self.task = None
                 self._stop()
@@ -102,7 +115,8 @@ class MotorController:
                 stop_time = time.time()
                 self.position = 'obst'
                 self._stop()
-                self.bc2_timer += time.time() - stop_time
+                time.sleep(3)
+                self.bc2_timer += time.time() - stop_time + 0.325
                 return
             if rho < 900:
                 self._backward_line(theta, rho)
@@ -128,7 +142,7 @@ class MotorController:
             self.left_motor[1].off()
             self.right_motor[0].off()
             self.right_motor[1].on()
-            time.sleep(0.02)
+            time.sleep(0.025)
             self.left_motor[0].off()
             self.left_motor[1].on()
             self.right_motor[0].off()
@@ -138,7 +152,7 @@ class MotorController:
             self.left_motor[1].on()
             self.right_motor[0].off()
             self.right_motor[1].off()
-            time.sleep(0.02)
+            time.sleep(0.012)
             self.left_motor[0].off()
             self.left_motor[1].on()
             self.right_motor[0].off()
@@ -217,7 +231,7 @@ class MotorController:
             self.right_motor[1].off()
             time.sleep(0.15)
             
-    def _is_near(self, is_frw, thresh=70):
+    def _is_near(self, is_frw, thresh=100):
         if is_frw:
             GPIO.output(self.trig_f, True)
             time.sleep(0.00001)
@@ -260,5 +274,7 @@ class MotorController:
 
 if __name__ == '__main__':
     controller = MotorController(200)
+    controller._backward()
+    time.sleep(2)
     controller._stop()
         
